@@ -18,8 +18,6 @@ func Test_SalesService_CreateSale_InvalidReq(t *testing.T) { // по БТ зде
 		schedule       fixtures.ScheduleMap
 		expectedStatus int
 	}
-	//todo: ЧТО БУДЕТ ЕСЛИ ПЕРЕДАТЬ ОДНО ВАЛИДНОЕ И ОДНО НЕВАЛИДНОЕ ЗНАЧЕНИЕ?
-	// ЧТО БУДЕТ ЕСЛИ ВЫБРАТЬ ЛОКАЦИЮ ГДЕ ПЕРЕХОДЯТ НА ЛЕТНЕЕ ВРЕМЯ?
 	tests := []testCase{
 		{
 			name:     "Ошибка: Пустое имя продажи",
@@ -81,6 +79,16 @@ func Test_SalesService_CreateSale_InvalidReq(t *testing.T) { // по БТ зде
 			timezone: "Europe/Berlin",
 			schedule: fixtures.ScheduleMap{
 				"THURSDAY": {"09:65", "15:00"},
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:     "Ошибка: валидное и невалидное время в расписании",
+			saleName: "Both valid and invalid schedule",
+			timezone: "Europe/Berlin",
+			schedule: fixtures.ScheduleMap{
+				"THURSDAY": {"09:00", "10:00"},
+				"THURSDA":  {"10:00", "11:00"},
 			},
 			expectedStatus: http.StatusBadRequest,
 		},

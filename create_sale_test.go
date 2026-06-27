@@ -257,6 +257,42 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 			targetActiveTime: "2026-01-01T00:00:00+02:00",
 			saleIsActive:     false,
 		},
+		{
+			// проверка работы с таймзонами
+			//В UTC - воскресенье, а в таймзоне продажи - понедельник (смещение зоны в +)
+			name:     "Вокресенье в UTC, зона: Токио, акция: активна, время: внутри интервала",
+			saleName: "UTC plus",
+			timezone: "Asia/Tokyo",
+			schedule: []client.ScheduleItem{
+				{Day: "MONDAY", From: "09:00", To: "18:00"},
+			},
+			targetActiveTime: "2026-06-22T09:30:00+09:00", //9:30 утра пн в Токио, в UTC это воскресенье, 2026-06-21T23:30:00Z
+			saleIsActive:     true,
+		},
+		{
+			// проверка работы с таймзонами
+			//В UTC - воскресенье, а в таймзоне продажи - суббота (смещение зоны в -)
+			name:     "Вокресенье в UTC, зона: Америка, акция: активна, время: внутри интервала",
+			saleName: "UTC minus",
+			timezone: "America/New_York",
+			schedule: []client.ScheduleItem{
+				{Day: "MONDAY", From: "09:00", To: "18:00"},
+			},
+			targetActiveTime: "2026-06-22T17:30:00-04:00", //17:30 в Нью_йорке, в UTC это вторник, 2026-06-23T21:30:00Z
+			saleIsActive:     true,
+		},
+		{
+			// проверка работы с таймзонами
+			//смещение на нецелое количество часов
+			name:     "Смещение на нецелое количество часов, зона: Индия, акция: активна, время: внутри интервала",
+			saleName: "UTC with half an hour",
+			timezone: "Asia/Kolkata",
+			schedule: []client.ScheduleItem{
+				{Day: "MONDAY", From: "09:00", To: "18:00"},
+			},
+			targetActiveTime: "2026-06-22T10:30:00+05:30", //10:30 в Индии, в UTC это понедельник, 5 утра, 2026-06-22T05:00:00Z
+			saleIsActive:     true,
+		},
 	}
 
 	for _, tc := range tests {
