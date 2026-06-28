@@ -94,24 +94,30 @@ func Test_SalesService_CreateSale_InvalidReq(t *testing.T) { // по БТ зде
 		},
 	}
 
-	for _, tc := range tests {
+	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			reqBody := fixtures.BuildSaleRequest(tc.saleName, tc.timezone, tc.schedule)
+			t.Logf("Тест # %d", i+1)
+			t.Logf("Имя теста: \"%s\"", tc.name)
+			t.Logf("Имя продажи: \"%s\"", tc.saleName)
+			t.Logf("Зона: %s, расписание: %s", tc.timezone, tc.schedule)
 
-			resp, err := salesServiceClient.CreateSale(reqBody)
-			if err != nil {
-				t.Fatalf("Ошибка: %v", err)
-			}
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
+			t.Run("Создание продажи", func(t *testing.T) {
+				reqBody := fixtures.BuildSaleRequest(tc.saleName, tc.timezone, tc.schedule)
+
+				resp, err := salesServiceClient.CreateSale(reqBody)
 				if err != nil {
-					t.Errorf("Ошибка при закрытии: %s", err.Error())
+					t.Fatalf("Ошибка: %v", err)
 				}
-			}(resp.Body)
+				defer func(Body io.ReadCloser) {
+					err := Body.Close()
+					if err != nil {
+						t.Errorf("Ошибка при закрытии: %s", err.Error())
+					}
+				}(resp.Body)
 
-			assert.Equal(t, tc.expectedStatus, resp.StatusCode, fmt.Sprintf("Ожидаем код: %d, фактический код: %d", tc.expectedStatus, resp.StatusCode))
-
-			t.Logf("Тест %s завершён успешно. Статус ответа: %s", t.Name(), resp.Status)
+				assert.Equal(t, tc.expectedStatus, resp.StatusCode, fmt.Sprintf("Ожидаем код: %d, фактический код: %d", tc.expectedStatus, resp.StatusCode))
+				t.Logf("Тест # %d завершён. Статус ответа: %s\n\n", i+1, resp.Status)
+			})
 		})
 	}
 }

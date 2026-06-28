@@ -23,7 +23,7 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		{
 			//внутри интервала
 			name:     "Два дня, зона: Берлин, акция: активна, время: внутри интервала дня 1",
-			saleName: "Two days, same time, Berlin, active, middle",
+			saleName: "Two days, same time, Berlin, active, middle 1",
 			timezone: "Europe/Berlin",
 			schedule: []client.ScheduleItem{
 				{Day: "MONDAY", From: "09:00", To: "18:00"},
@@ -35,7 +35,7 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		{
 			//внутри интервала
 			name:     "Два дня, зона: Берлин, акция: активна, время: внутри интервала дня 2",
-			saleName: "Two days, same time, Berlin, active, middle",
+			saleName: "Two days, same time, Berlin, active, middle 2",
 			timezone: "Europe/Berlin",
 			schedule: []client.ScheduleItem{
 				{Day: "MONDAY", From: "09:00", To: "18:00"},
@@ -47,7 +47,7 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		{
 			//точная левая граница
 			name:     "Два дня, зона: Берлин, акция: активна, время: точная левая граница дня 1",
-			saleName: "Two days, same time, Berlin, active, left border",
+			saleName: "Two days, same time, Berlin, active, left border 1",
 			timezone: "Europe/Berlin",
 			schedule: []client.ScheduleItem{
 				{Day: "MONDAY", From: "09:00", To: "18:00"},
@@ -59,7 +59,7 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		{
 			//точная левая граница
 			name:     "Два дня, зона: Берлин, акция: активна, время: точная левая граница дня 2",
-			saleName: "Two days, same time, Berlin, active, left border",
+			saleName: "Two days, same time, Berlin, active, left border 2",
 			timezone: "Europe/Berlin",
 			schedule: []client.ScheduleItem{
 				{Day: "MONDAY", From: "09:00", To: "18:00"},
@@ -71,7 +71,7 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		{
 			//точная правая граница
 			name:     "Два дня, зона: Берлин, акция: неактивна, время: точная правая граница дня 1",
-			saleName: "Two days, same time, Berlin, inactive, right border",
+			saleName: "Two days, same time, Berlin, inactive, right border 1",
 			timezone: "Europe/Berlin",
 			schedule: []client.ScheduleItem{
 				{Day: "MONDAY", From: "09:00", To: "18:00"},
@@ -83,7 +83,7 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		{
 			//точная правая граница
 			name:     "Два дня, зона: Берлин, акция: неактивна, время: точная правая граница дня 2",
-			saleName: "Two days, same time, Berlin, inactive, right border",
+			saleName: "Two days, same time, Berlin, inactive, right border 2",
 			timezone: "Europe/Berlin",
 			schedule: []client.ScheduleItem{
 				{Day: "MONDAY", From: "09:00", To: "18:00"},
@@ -295,39 +295,48 @@ func Test_SalesService_CreateSale_HappyPath(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("Имя теста: %s", t.Name())
-			t.Logf("Имя продажи: %s, таймзона: %s, расписание: %s", tc.saleName, tc.timezone, tc.schedule)
+			t.Logf("Тест # %d", i+1)
+			t.Logf("Имя теста: \"%s\"", tc.name)
+			t.Logf("Имя продажи: \"%s\"", tc.saleName)
+			t.Logf("Зона: %s, расписание: %s", tc.timezone, tc.schedule)
 
 			var createdID string
-
+			continue_test := true
 			t.Run("Создание продажи", func(t *testing.T) {
 				reqCreateSale := client.CreateSaleRequest{
 					Name:     tc.saleName,
 					Timezone: tc.timezone,
 					Schedule: tc.schedule,
 				}
-				respCreateSale, statusCreateSale, errCreateSale := salesServiceClient.CreateSaleAndParse(reqCreateSale)
+				respCreateSale, statusCreateSale, errCreateSale := salesServiceClient.ParsedCreateSale(reqCreateSale)
 				if errCreateSale != nil {
 					t.Fatalf("Ошибка: %v", errCreateSale)
 				}
+				if statusCreateSale == http.StatusBadRequest {
+					continue_test = false
+					t.Fatalf("Критическая ошибка при создании продажи (код %d). Тест остановлен.", statusCreateSale)
+				}
 				assert.Equal(t, http.StatusCreated, statusCreateSale, fmt.Sprintf("Ожидаем код: %d, фактический код: %d", http.StatusCreated, statusCreateSale))
 				assert.NotEmpty(t, respCreateSale.ID, "ID продажи должен быть непустым")
-
 				createdID = respCreateSale.ID
 			})
-
+			if continue_test == false {
+				t.Fatal("Тест остановлен.")
+			}
 			t.Run("Проверка статуса продажи", func(t *testing.T) {
-				respActiveCheck, statusActiveCheck, errActiveCheck := salesServiceClient.IsSaleActiveAndParse(createdID, tc.targetActiveTime)
+				respActiveCheck, statusActiveCheck, errActiveCheck := salesServiceClient.ParsedSaleIsActive(createdID, tc.targetActiveTime)
 				if errActiveCheck != nil {
 					t.Fatalf("Ошибка при проверке статуса продажи: %v", errActiveCheck)
 				}
+				if statusActiveCheck == http.StatusBadRequest {
+					t.Fatalf("Критическая ошибка при проверки статуса продажи (код %d). Тест остановлен.", statusActiveCheck)
+				}
 				assert.Equal(t, http.StatusOK, statusActiveCheck)
 				assert.Equal(t, tc.saleIsActive, respActiveCheck.Active, fmt.Sprintf("Продажа должна иметь статус %t", tc.saleIsActive))
-				t.Logf("Тест %s завершён успешно. Статус акции: %t", t.Name(), respActiveCheck.Active)
 			})
-
+			t.Logf("Тест # %d завершён.\n\n", i+1)
 		})
 	}
 }
